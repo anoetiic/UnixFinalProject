@@ -1,1 +1,277 @@
-print('Bingo')
+<!DOCTYPE html>
+<html>
+<head>
+<title>Bingo Game</title>
+
+<style>
+body { text-align: center; }
+
+.boards {
+    display: flex;
+    justify-content: center;
+    gap: 50px;
+}
+
+/* Tables */
+table {
+    border-collapse: collapse;
+    margin: auto;
+}
+
+th {
+    font-size: 24px;
+    padding: 10px;
+}
+
+td {
+    width: 60px;
+    height: 60px;
+    border: 1px solid black;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+/* Player marks */
+.marked {
+    background-color: lightpink;
+}
+
+/* Robot marks */
+#robotBoard .marked {
+    background-color: lightblue;
+}
+
+/* 🎉 WIN ANIMATION */
+@keyframes winFlash {
+    0% { background-color: gold; transform: scale(1); }
+    50% { background-color: orange; transform: scale(1.1); }
+    100% { background-color: gold; transform: scale(1); }
+}
+
+.winner {
+    animation: winFlash 0.5s infinite;
+    border: 2px solid orange;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Bingo: You vs Robot</h1>
+
+<button onclick="generateBoard()">New Game</button>
+<button onclick="callNumber()">Call Number</button>
+
+<h2 id="currentNumber">Next Number: --</h2>
+
+<div class="boards">
+    <div>
+        <h2>You</h2>
+        <table id="bingo"></table>
+    </div>
+
+    <div>
+        <h2>Robot</h2>
+        <table id="robotBoard"></table>
+    </div>
+</div>
+
+<script>
+
+let gameOver = false;
+let remaining = [];
+let robotBoard = [];
+
+// Format BINGO labels
+function formatCall(num){
+    if(num <= 15) return "B-" + num;
+    if(num <= 30) return "I-" + num;
+    if(num <= 45) return "N-" + num;
+    if(num <= 60) return "G-" + num;
+    return "O-" + num;
+}
+
+// Generate player board
+function generateBoard(){
+
+    gameOver = false;
+    remaining = [];
+
+    for(let i = 1; i <= 75; i++) remaining.push(i);
+
+    document.getElementById("currentNumber").innerText = "Next Number: --";
+
+    let table = document.getElementById("bingo");
+    table.innerHTML = `
+        <tr><th>B</th><th>I</th><th>N</th><th>G</th><th>O</th></tr>
+    `;
+
+    function getCol(start,end){
+        let nums=[];
+        for(let i=start;i<=end;i++) nums.push(i);
+        nums.sort(()=>Math.random()-0.5);
+        return nums.slice(0,5);
+    }
+
+    let B=getCol(1,15), I=getCol(16,30), N=getCol(31,45), G=getCol(46,60), O=getCol(61,75);
+
+    for(let r=0;r<5;r++){
+        let row=document.createElement("tr");
+
+        for(let c=0;c<5;c++){
+            let cell=document.createElement("td");
+
+            if(r===2 && c===2){
+                cell.innerText="FREE";
+                cell.classList.add("marked");
+            } else {
+                let val=[B,I,N,G,O][c][r];
+                cell.innerText=val;
+            }
+
+            cell.onclick=function(){
+                if(gameOver) return;
+                cell.classList.toggle("marked");
+                checkWin();
+            };
+
+            row.appendChild(cell);
+        }
+
+        table.appendChild(row);
+    }
+
+    generateRobotBoard();
+}
+
+// Generate robot board
+function generateRobotBoard(){
+
+    let table=document.getElementById("robotBoard");
+    table.innerHTML=`<tr><th>B</th><th>I</th><th>N</th><th>G</th><th>O</th></tr>`;
+
+    function getCol(start,end){
+        let nums=[];
+        for(let i=start;i<=end;i++) nums.push(i);
+        nums.sort(()=>Math.random()-0.5);
+        return nums.slice(0,5);
+    }
+
+    let B=getCol(1,15), I=getCol(16,30), N=getCol(31,45), G=getCol(46,60), O=getCol(61,75);
+
+    robotBoard=[];
+
+    for(let r=0;r<5;r++){
+        let row=document.createElement("tr");
+
+        for(let c=0;c<5;c++){
+            let cell=document.createElement("td");
+
+            if(r===2 && c===2){
+                cell.innerText="FREE";
+                cell.classList.add("marked");
+                robotBoard.push(true);
+            } else {
+                let val=[B,I,N,G,O][c][r];
+                cell.innerText=val;
+                robotBoard.push(val);
+            }
+
+            row.appendChild(cell);
+        }
+
+        table.appendChild(row);
+    }
+}
+
+// Call number
+function callNumber(){
+    if(gameOver) return;
+
+    let index=Math.floor(Math.random()*remaining.length);
+    let num=remaining.splice(index,1)[0];
+
+    document.getElementById("currentNumber").innerText="Next Number: "+formatCall(num);
+
+    highlightNumber(num);
+    markRobot(num);
+
+    if(checkRobotWin()) return;
+
+    checkWin();
+}
+
+// Mark player board
+function highlightNumber(num){
+    document.querySelectorAll("#bingo td").forEach(cell=>{
+        if(parseInt(cell.innerText)===num) cell.classList.add("marked");
+    });
+}
+
+// Mark robot board
+function markRobot(num){
+    let cells=document.querySelectorAll("#robotBoard td");
+
+    for(let i=0;i<robotBoard.length;i++){
+        if(robotBoard[i]===num){
+            robotBoard[i]=true;
+            cells[i].classList.add("marked");
+        }
+    }
+}
+
+// Highlight winner
+function highlightWinner(selector,line){
+    let cells=document.querySelectorAll(selector+" td");
+    line.forEach(i=>cells[i].classList.add("winner"));
+}
+
+// Check player win
+function checkWin(){
+    let cells=document.querySelectorAll("#bingo td");
+    let board=[...cells].map(c=>c.classList.contains("marked"));
+
+    let lines=[
+        [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],
+        [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],
+        [0,6,12,18,24],[4,8,12,16,20]
+    ];
+
+    for(let line of lines){
+        if(line.every(i=>board[i])){
+            highlightWinner("#bingo",line);
+            gameOver=true;
+            document.getElementById("currentNumber").innerText="YOU WIN!";
+            return;
+        }
+    }
+}
+
+// Check robot win
+function checkRobotWin(){
+    let b=robotBoard.map(x=>x===true);
+
+    let lines=[
+        [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],
+        [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],
+        [0,6,12,18,24],[4,8,12,16,20]
+    ];
+
+    for(let line of lines){
+        if(line.every(i=>b[i])){
+            highlightWinner("#robotBoard",line);
+            gameOver=true;
+            document.getElementById("currentNumber").innerText="Robot Wins!";
+            return true;
+        }
+    }
+    return false;
+}
+
+// Start game
+generateBoard();
+
+</script>
+
+</body>
+</html>
