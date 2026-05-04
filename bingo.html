@@ -241,7 +241,7 @@ function checkWin(){
         if(line.every(i=>board[i])){
             highlightWinner("#bingo",line);
             gameOver=true;
-            document.getElementById("currentNumber").innerText="YOU WIN!";
+            document.getElementById("currentNumber").innerText="🎉 YOU WIN!";
             return;
         }
     }
@@ -261,7 +261,7 @@ function checkRobotWin(){
         if(line.every(i=>b[i])){
             highlightWinner("#robotBoard",line);
             gameOver=true;
-            document.getElementById("currentNumber").innerText="Robot Wins!";
+            document.getElementById("currentNumber").innerText="🤖 Robot Wins!";
             return true;
         }
     }
