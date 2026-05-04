@@ -1,63 +1,55 @@
-#include <iostream>
-#include <cstring>
-#include <unistd.h>
-#include <arpa/inet.h>
+#include <iostream> // Allows input/output (cout)
+#include <fstream> // Allows file reading (ifstream)
+#include <sstream> // Allows string streams
+#include <string> // Allows use of string type
+#include <unistd.h> // Provides close(), read(), write()
+#include <netinet/in.h> // Provides internet structures (sockaddr_in)
 
-#define MY_SERVER_PORT 9090
-#define buffer_size 200000
-using namespace std;
+using namespace std; // Avoids needing std:: everywhere
 
-int main() {
-    int server_fd, new_socket;
-    struct sockaddr_in address;
-    int addrlen = sizeof(address);
+int main() { // Main function where program starts
 
-    char buffer[30000] = {0};
+    int server_fd, new_socket; // server_fd = server socket, new_socket = client connection
+    struct sockaddr_in address; // Structure to store server address info
+    int addrlen = sizeof(address); // Size of address structure
 
-    // Create Socket
-    server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd == 0){
-        perror("Socket Failed");
-        exit(EXIT_FAILURE);
+    int port = 9090; // Port number server will listen on
+
+    server_fd = socket(AF_INET, SOCK_STREAM, 0); // Create TCP socket
+
+    address.sin_family = AF_INET; // Use IPv4
+    address.sin_addr.s_addr = INADDR_ANY; // Accept connections from any IP
+    address.sin_port = htons(port); // Convert port to network byte order
+
+    bind(server_fd, (struct sockaddr*)&address, sizeof(address)); // Bind socket to IP and port
+
+    listen(server_fd, 5); // Start listening (max 5 queued connections)
+
+    cout << "Server running on port " << port << endl; // Print server status
+
+    while (true) { // Infinite loop to keep server running
+
+        new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen); // Accept incoming connection
+
+        char buffer[30000] = {0}; // Create buffer to store request
+        read(new_socket, buffer, 30000); // Read HTTP request from client
+
+        ifstream file("bingo.html"); // Open HTML file
+
+        stringstream ss; // Create string stream
+        ss << file.rdbuf(); // Read entire file into stream
+        string html = ss.str(); // Convert stream to string
+
+        string response = // Build HTTP response
+            "HTTP/1.1 200 OK\n" // Status line
+            "Content-Type: text/html\n" // Tell browser it's HTML
+            "Content-Length: " + to_string(html.size()) + "\n\n" + // Length of content
+            html; // Attach HTML content
+
+        send(new_socket, response.c_str(), response.size(), 0); // Send response to browser
+
+        close(new_socket); // Close client connection
     }
 
-    // Setup Address
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(9090);
-
-    // Bind
-    if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
-        perror("Bind failed");
-        exit(EXIT_FAILURE);
-    }
-
-    // Listen
-    if(listen(server_fd, 3) < 0){
-        perror("Listen");
-        exit(EXIT_FAILURE);
-    }
-
-    cout << "Server running on port 9090... \n";
-
-    // Accept Connection
-    new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
-
-    // Read Request
-    read(new_socket, buffer, 30000);
-    cout << buffer << endl;
-
-    // Send Response
-    const char* response =
-        "HTTP/1.1 200 OK\n"
-        "Content-Type: text/html\n\n"
-        "<html><body><h1>Hello from C++ Server!</h1></body></html>";
-
-    send(new_socket, response , strlen(response), 0);
-
-    // Close Sockets
-    close(new_socket);
-    close(server_fd);
-
-    return 0;
+    return 0; // End program (never reached)
 }
